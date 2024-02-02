@@ -1,0 +1,107 @@
+########################################################################
+#   feHMM Makefile for elliptic example                                #
+########################################################################
+.PHONY: all
+
+all: ellipt
+
+DEFAULT = ellipt
+
+fehmm_prefix = @prefix@
+
+########################################################################
+#   mpi and debug                                                      #
+########################################################################
+
+MPI=0
+DEBUG=0
+
+########################################################################
+#   flags                                                              #
+########################################################################
+
+ifeq ($(DEBUG),1)
+CXXFLAGS = -I@includedir@/@PACKAGE@ @FEHMM_DEBUG_CXXFLAGS@ @CXXFLAGS@
+ALBERTA_DEBUG = 1
+else
+CXXFLAGS = -I@includedir@/@PACKAGE@ @FEHMM_RELEASE_CXXFLAGS@ @CXXFLAGS@
+ALBERTA_DEBUG = 0
+endif
+
+FFLAGS = @FFLAGS@
+
+LDFLAGS = @LDFLAGS@
+
+DIM_OF_WORLD = 2
+include $(ALBERTA_DATA_PATH)/Makefile.alberta
+
+########################################################################
+#   postprocessing after Makefile.alberta inclusion                    #
+########################################################################
+
+ifeq ($(MPI), 1)
+CXXFLAGS+=-DUSING_MPI=$(MPI)
+endif
+
+ifeq ($(MPI), 1)
+CPP = @MPICXX@
+LD = @MPICC@
+else
+CPP = @CXX@
+LD = @CC@
+endif
+
+alberta_prefix = $(ALBERTA_LIB_PATH)/..
+alberta_exec_prefix = ${alberta_prefix}
+prefix = ${fehmm_prefix}
+
+LIBTOOL_LINK = ${alberta_exec_prefix}/libexec/libtool.alberta --mode=link --tag=sometag
+LINK = $(LIBTOOL_LINK) $(LD) -o $@
+
+ALLFLAGS = $(DFLAGS) $(LDFLAGS) $(CXXFLAGS) $(CFLAGS) -I$(ALBERTA_INCLUDE_PATH) -I$(ALBERTA_INCLUDE_PATH)/../../alberta/src/Common
+
+.cpp.o:
+	$(CPP) $(ALLFLAGS) -c $<
+
+########################################################################
+#  get the right feHMM library name                                    #
+########################################################################
+
+ifeq ($(MPI),1)
+ifeq ($(DEBUG),1)
+HMMNAME=feHMM_$(DIM_OF_WORLD)d_mpi_debug
+else # DEBUG != 1
+HMMNAME=feHMM_$(DIM_OF_WORLD)d_mpi
+endif
+else # MPI != 1
+ifeq ($(DEBUG),1)
+HMMNAME=feHMM_$(DIM_OF_WORLD)d_debug
+else # DEBUG != 1
+HMMNAME=feHMM_$(DIM_OF_WORLD)d
+endif
+endif
+
+########################################################################
+#  link additional libraries                                           #
+########################################################################
+
+ifeq ($(MPI),1)
+MYLIBS = -L./ -L/@libdir@ -R/@libdir@ -l$(HMMNAME) -llammpi++ -lstdc++ -lgsl -lgslcblas $(LIBS)
+else
+MYLIBS = -L./ -L/@libdir@ -R/@libdir@ -l$(HMMNAME) -lstdc++ -lgsl -lgslcblas $(LIBS)
+endif
+
+########################################################################
+#  make rules                                                          #
+########################################################################
+
+EXAMPLE_OFILES = ellipt.o
+
+ellipt: $(EXAMPLE_OFILES)
+	$(LINK) $(EXAMPLE_OFILES) $(MYLIBS)
+	
+.PHONY: clean
+
+clean: 
+	rm -f *.o
+	rm -f ellipt

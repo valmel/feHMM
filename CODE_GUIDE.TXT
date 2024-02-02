@@ -1,0 +1,127 @@
+For comprehensive overview of Heterogeneous Multiscale Method (HMM), see
+E, W. and Engquist, B. and Li, X. T. and Ren, W. Q. and Vanden-Eijnden, E.:
+Heterogeneous multiscale methods: A review, Communications In Computational
+Physics, (2) pp. 367-450, 2007. The details about boundary conditions at the
+microscopic level can be found in Xingye Yue and Weinan E:The local microscale
+problem in the multiscale modeling of strongly heterogeneous media: Effects of
+boundary conditions and cell size, Journal of Computational Physics, pp. 556-72,
+2007.
+
+Standard workflow from the point of view of user is as follows:
+
+User provides routines for the calculation of right hand side, the variation formulation
+of the problem, boundary conditions and in case of parabolic problem also initial
+conditions. Using these he creates calculation object. Than he can use the solve
+function of this object which provides him with the result of the problem and he
+can, besides receiving the information about the error (if exact solution provided),
+visualise the data using ParaView or other program designed to visualise VTK
+formated data.
+
+Implementation details:
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Classes (files) without 'par' in their names are basic files, mainly dedicated to
+elliptic type of problems. Classes with 'par' in their names, dedicated to parabolic
+type of problems,  are derived from their base classes and usually provide only
+functions that are to be handled differently in the parabolic case.
+
+Files:
+	CAlbertaInterface(par) - provides interface to ALBERTA program. Embraces most
+		of the data structures (vectors, matrices, fe spaces...). Makes all necessary
+		memory allocations.
+	CLevel(par) - actual implementation of HMM. Contains user provided data and pointer
+		to CAlbertaInterface. Constructs matrix of variational formulation together
+		with right hand side. Provides functions to solve and print solution and calculate
+		L2Error.
+	CLevelMPI - special functions needed for parallel computations.
+	CTimePartitioning - class encapsulating structure for time dependent problems
+	CUserData(par) - User provided data used during computations. These can be
+		parameters or pointers to functions (s.a. function to evaluate mass matrix
+		or right hand side). Pointer to functions are only tested whether they are
+		NULL or not. Parameters can be loaded from external INIT file (the same as used
+		to set up Alberta, usually 'INIT/init.dat').
+	ErrorReturnCodes - list of error codes returned by library. Momentary not all
+		functions return error codes and valid error code is provided only if there
+		is an error in input parameters.
+	feHMM(par) - main user interface. Class used by user to communicate with library
+		(CLevel(par)).
+	SaveToVTK(par) - class handling graphical output, used by CLevel(par).
+
+Following description of workflow is for elliptic type of problems. In the parabolic
+(time-dependent) case is workflow similar except for several calls of build/solve and
+copying data from actual time level to previous in order to provide enough information
+for explicit euler scheme.
+
+1) User creates CUserData object and fills it with:
+      parameters for HMM method
+      parameters for solver
+      pointers to functions:
+      	for calculation of right hand side at macroscopic level
+        for building static (time/space independent) part of the mass matrix at microscopic level
+        for building dynamic part of the mass matrix at microscopic level 
+        for evaluation of dirichlet boundary conditions (if used)
+        postprocessing solution on microscopic level
+      relation matrix describing connection between problem variables
+
+2) User creates feHMM object and initialises it with CUserData structure. During construction
+   data are tested using CheckUserData. If some initial data are invalid or missing, error raises
+   and program terminates. User provided functions are tested only on NULL, their integrity is
+   not tested. If data are OK, initialisation of library continues.
+   
+3) Chained list of CLevel objects is created. For every level one object. First (highest) being
+   macroscopic level and last (lowest) microscopic. Implementation allows nesting of more than
+   2 levels. This require to implement periodic boundary condition for micro(meso)problems, which is not yet done. At every level initialisation is made during which matrices needed for calculation are created and initialised.
+   At the highest level all coordinates of domain provided by user are multiplied by factor provided
+   by user in INIT file (parameter 'scaling factors'). At lower levels the size of computational
+   domain (length of side of n-dimensional cube) is calculated as multiple of user provided factor
+   (should be < 1) and the minimal diameter of triangulation at higher level. ActualLevel is 0 for
+   microscopic level and NumberOfLevels-1 for macroscopic one. At every level besides standard matrices
+   (Matrix, StaticMatrix) also Restricted matrices are created. These are special matrices consisting
+   only of elements in the centers of cube domains at each level and are needed for dirichlet boundary
+   conditions at microscopic level. Due to their existence, there are several consecutive calls of build
+   at microscopic level.
+   
+4) When user calls Solve, the assemblage of mass matrix and right hand side begin.
+
+   At the microscopic level, user provided build function is called. At every level besides the
+   microscopic one, function Assemble is called.  This function first clears matrices it works with
+   (Matrix, RestrictedMatrix). Then it follows through all elements. At every element it calls
+   function ComputeForElInfo, which for one element and all basis functions it contains, builds
+   system using user provided build function (or mass matrix from lower level), sets dirichlet
+   boundary conditions (interpolating local finite element function), solves microscopic problem
+   and postprocesses obtained solution. Contribution to the mass matrix is then calculated integrating
+   over all basis functions over restricted space.
+   
+   During the computation 2 different dimensions are used. DimOfWorld, which is space dimension,
+   1D, 2D or 3D. Second one is DimOfProb which states number of variables of the problem, e.g.
+   for 3D problem in complex numbers DimOfProb=6. User provided build function receives the array
+   of finite element spaces (one for every variable) and the matrix of DimOfProb*DimOfProb matrices
+   of suitable sized matrices for every possible combination of these spaces. By assembling these
+   matrices into one big matrix of appropriate size (done automatically), the problem matrix is created.
+   
+   When integrating over all basis functions, nonzero elements may appear also at the parts of the
+   problem matrix, where they shouldn't. To prevent this, user provides mask (pMatrixMask) stating
+   relationship between individual problem variables, e.g. if the variational formulation matrix
+   looks like [u_xx u_xy; 0 u_yy], then user provides the mask in form [1 1; 0 1].  
+   
+   Build of right hand side is similar. Again function traverses all elements and calls user provided
+   function. This is done only at the first (macroscopic level).
+   
+   When problem matrix and right hand side are assembled, function Solve is called.
+   
+5) User has two possibilities to obtain information over results. If he has provided the exact solution,
+   than function L2Error returns the L2Error of calculated solution. Otherwise, calling SaveSolutionToVTK
+   he can save the result in file, whose file format is similar to VTK file format. As much information
+   as possible is saved, that means, that values at all quadrature points are saved and if user has
+   provided exact solution, this is also evaluated at all quadrature points and saved. Description how
+   to create from this text file real VTK formated file is written in its header. One can also use
+   provided python script. Currently, only results at the macroscopic level can be written to file
+   (no support for partial results on lower levels is available).
+   
+6) MPI. Computations can be made much faster using Message Passing Interface (MPI). In current
+   implementation every node runs the same code at the same time, until it reaches functions Assemble
+   or SetUpRHS, which are parallelised. At this point computer with node 0 starts function AssembleMaster
+   and all other AssembleSlave (similar with SetUpRHS). It runs through all elements and calls
+   function ComputeForElInfo at slave computers. Waits for the results (contribution of the element
+   to the mass matrix) and assembles the mass matrix (right hand side). So parallelisation is done
+   at the macroscopic level.      

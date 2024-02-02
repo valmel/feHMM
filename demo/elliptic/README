@@ -1,0 +1,14 @@
+To run:
+    make
+    ./ellipt
+The program saves the output to result.vt_. 
+This is not a valid VTK file. 
+Use VTKprocess.py macro to postprocess the result file in any way it suits you (or simply run VTKprocess.py 1 result.vt_ result.vtk ;)) 
+You get a valid vtk file. We suggest you to try ParaView (www.paraview.org) to view results.
+
+We kept the Albert(a) style of passing certain parameters at run time to the program, i.e we use "INIT/init.dat" file to pass 
+
+
+
+
+

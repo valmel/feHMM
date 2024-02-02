@@ -1,0 +1,44 @@
+% parameters for feHMM library
+number of levels:        2	% only two levels work at present time 
+macro file:              Macro/macro2dUser.amc	% geometry at macroscopic level - standard Alberta file
+level refinement:        2,2	% refinement 2xDIM at all levels; the macro level is the first
+quadrature:              1,1	% quadrature for each level
+scaling factors:         1,0.5	% the first number is rescalling factor of macro mesh (usually 1); the following number multiplied by the diameter of macromesh (computed automatically) is size of Y-cell (see the homogenization theory)   
+finite element degree:   1,1    % finite element degrees at macro and micro levels (only lagrange elements are supported by feHMM)    
+dim of world:            2      % 2d domain
+dim of problem:          2      % scalar problem in 2D
+problem number:          3      % periodic test problem
+boundary condition:      2	% 2 - Dirichlet boundary condition for microproblems. Other do not work at the moment.
+
+% Alberta stuff
+
+polynomial degree:    1
+
+% graphic windows: solution, estimate, mesh, and error if size > 0
+graphic windows:      500 500 0 0
+% for gltools graphics you can specify the range for the values of
+% discrete solution for displaying:  min max
+% automatical scaling by display routine if min >= max
+gltools range:  0.0 -1.0
+
+solver:                4 % 1: BICGSTAB 2: CG 3: TFQMR 4: GMRES 5: ODIR 6: ORES
+solver max iteration:  1000
+solver restart:        10  %  only used for GMRES
+solver tolerance:      1.e-20
+solver info:           2
+solver precon:         2   % 0: no precon 1: diag precon
+                           % 2: HB precon 3: BPX precon
+
+error norm:           1   % 1: H1_NORM, 2: L2_NORM
+estimator C0:         0.1 % constant of element residual
+estimator C1:         0.1 % constant of jump residual
+estimator C2:         0.0 % constant of coarsening estimate
+
+adapt->strategy:          0   % 0: no adaption 1: GR 2: MS 3: ES 4:GERS
+adapt->tolerance:         1.e-1
+adapt->MS_gamma:          0.5
+adapt->max_iteration:     15
+adapt->info:              8
+
+WAIT: 1
+

@@ -1,0 +1,37 @@
+An important comment for the beginning: this is an old work from 2009 and is not in active development.
+The second comment: Jan Busa, Jr. and I contributed to the work equally (~80% pair-programming).
+
+Before installing feHMM, the Alberta has to be properly installed. Particularly the following system paths have to be set up (the best place is .bashrc file in your home directory)
+
+export ALBERTA_INCLUDE_PATH=...
+export ALBERTA_LIB_PATH=...
+export ALBERTA_DATA_PATH=...
+
+These assumptions should be already met if your Alberta is in use...
+
+The installation of feHMM is 
+
+1a	"./configure" 
+or 
+1b	"./configure --with-mpi" (if you do know what mpi is and you want it)
+or 
+1c	You are a guru and nothing can stop you. Aaaagrrrrrr!!!
+
+2.	"make"
+
+3.	"sudo make install" ((k)ubuntu, what else?)
+
+Remark:
+For new systems gfortran is the name of fortran compiler. You can then encounter problems with -lfrtbegin and -lg2c libraries when compiling. Simply adapt "$(ALBERTA_DATA_PATH)/Makefile.alberta" such that it contains
+the line "FC = gfortran" instead of the original "FC = g77" and erase -lfrtbegin and -lg2c switches from the line beginning with "BLAS_LIB = ". 
+
+After installation pop in the demo directory.
+
+For the implementation details of the library read CODE_GUIDE.TXT. 
+
+
+
+
+
+
+

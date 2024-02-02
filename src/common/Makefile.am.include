@@ -1,0 +1,14 @@
+sources = \
+  ../common/SaveToVTKpar.cpp \
+  ../common/feHMM.cpp \
+  ../common/feHMMpar.cpp \
+  ../common/CLevel.cpp \
+  ../common/CLevelPar.cpp \
+  ../common/SaveToVTK.cpp \
+  ../common/CAlbertaInterfacePar.cpp \
+  ../common/CAlbertaInterface.cpp \
+  ../common/CUserData.cpp \
+  ../common/CUserDataPar.cpp \
+  ../common/CTimePartitioning.cpp
+
+DEFS = @DEFS@ -DDIM_OF_WORLD=$(FEHMM_DIM_OF_WORLD) -DDEBUG=$(FEHMM_DEBUG) -DALBERTA_DEBUG=$(FEHMM_DEBUG)
